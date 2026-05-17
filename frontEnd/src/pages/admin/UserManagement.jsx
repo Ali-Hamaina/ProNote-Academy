@@ -6,12 +6,15 @@ import userService from '../../services/userService';
 
 const UserManagement = () => {
     const [showModal, setShowModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
     const [filter, setFilter] = useState({ role: 'all', status: 'all' });
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
-    const [formData, setFormData] = useState({ first_name: '', last_name: '', email: '', role: '', class_id: '' });
+    const [formData, setFormData] = useState({ first_name: '', last_name: '', email: '', role: '', status: 'active', class_id: '' });
     const [submitting, setSubmitting] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [formError, setFormError] = useState('');
 
     const fetchUsers = async (page = 1) => {
@@ -21,34 +24,100 @@ const UserManagement = () => {
             if (filter.role !== 'all') params.role = filter.role;
             if (filter.status !== 'all') params.status = filter.status;
             const res = await userService.getAll(params);
-            const d = res.data || res;
-            setUsers(Array.isArray(d) ? d : d.data || []);
-            if (d.current_page) setPagination({ current_page: d.current_page, last_page: d.last_page, total: d.total });
-        } catch { setUsers([]); }
+            const data = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : res.data?.data || []);
+            const meta = res.pagination || res.meta || res.data?.pagination;
+            setUsers(data);
+            setPagination({
+                current_page: meta?.current_page || page,
+                last_page: meta?.last_page || 1,
+                total: meta?.total ?? data.length,
+            });
+        } catch {
+            setUsers([]);
+            setPagination({ current_page: 1, last_page: 1, total: 0 });
+        }
         setLoading(false);
     };
 
     useEffect(() => { fetchUsers(); }, [filter]);
 
-    const handleCreate = async (e) => {
+    const resetForm = () => {
+        setFormData({ first_name: '', last_name: '', email: '', role: '', status: 'active', class_id: '' });
+        setFormError('');
+    };
+
+    const openCreateModal = () => {
+        setEditingUser(null);
+        resetForm();
+        setShowModal(true);
+    };
+
+    const openEditModal = (user) => {
+        const [firstName = '', ...rest] = (user.name || '').split(' ');
+        setEditingUser(user);
+        setFormData({
+            first_name: firstName,
+            last_name: rest.join(' '),
+            email: user.email || '',
+            role: user.role || '',
+            status: user.status || 'active',
+            class_id: '',
+        });
+        setFormError('');
+        setShowModal(true);
+    };
+
+    const closeUserModal = () => {
+        setShowModal(false);
+        setEditingUser(null);
+        resetForm();
+    };
+
+    const buildPayload = () => {
+        const payload = {
+            name: `${formData.first_name} ${formData.last_name}`.trim(),
+            email: formData.email,
+            role: formData.role.toLowerCase(),
+            status: formData.status,
+        };
+
+        if (!editingUser) {
+            payload.password = 'Password123';
+            payload.password_confirmation = 'Password123';
+        }
+
+        return payload;
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         setFormError('');
         try {
-            await userService.create({ name: `${formData.first_name} ${formData.last_name}`, email: formData.email, role: formData.role.toLowerCase(), password: 'password123', password_confirmation: 'password123' });
-            setShowModal(false);
-            setFormData({ first_name: '', last_name: '', email: '', role: '', class_id: '' });
+            if (editingUser) {
+                await userService.update(editingUser.id, buildPayload());
+            } else {
+                await userService.create(buildPayload());
+            }
+            closeUserModal();
             fetchUsers(pagination.current_page);
         } catch (err) {
-            const msg = err.response?.data?.errors ? Object.values(err.response.data.errors).flat().join(' ') : 'Failed to create user.';
+            const msg = err.response?.data?.errors ? Object.values(err.response.data.errors).flat().join(' ') : `Failed to ${editingUser ? 'update' : 'create'} user.`;
             setFormError(msg);
         }
         setSubmitting(false);
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm('Are you sure you want to delete this user?')) return;
-        try { await userService.delete(id); fetchUsers(pagination.current_page); } catch { /* silent */ }
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        try {
+            await userService.delete(deleteTarget.id);
+            setDeleteTarget(null);
+            const nextPage = users.length === 1 && pagination.current_page > 1 ? pagination.current_page - 1 : pagination.current_page;
+            fetchUsers(nextPage);
+        } catch { /* silent */ }
+        setDeleting(false);
     };
 
     const roleColors = { admin: 'warning', Admin: 'warning', formateur: 'primary', Formateur: 'primary', stagiaire: 'purple', Stagiaire: 'purple' };
@@ -57,7 +126,7 @@ const UserManagement = () => {
         <div className="space-y-6" >
             <Breadcrumbs items={[{ label: 'User Management' }]} />
             <PageHeader title="User Management" subtitle="Manage and organize trainers, students, and administrative staff.">
-                <Button  icon={UserPlus} onClick={() => setShowModal(true)}>Add New User</Button>
+                <Button icon={UserPlus} onClick={openCreateModal}>Add New User</Button>
             </PageHeader>
 
             <Card padding="none">
@@ -99,7 +168,7 @@ const UserManagement = () => {
                                         <td className="px-6 py-4"><Badge variant={roleColors[user.role] || 'primary'}>{user.role}</Badge></td>
                                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{user.class?.name || user.department || '—'}</td>
                                         <td className="px-6 py-4"><div className={`flex items-center gap-2 ${user.status === 'active' || user.status === 'Active' ? 'text-emerald-600' : 'text-slate-500'}`}><div className={`size-2 rounded-full ${user.status === 'active' || user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} /><span className="text-xs font-medium capitalize">{user.status || 'active'}</span></div></td>
-                                        <td className="px-6 py-4 text-right"><div className="flex justify-end gap-1"><button className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"><Pencil className="w-5 h-5" strokeWidth={2} /></button><button onClick={() => handleDelete(user.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 className="w-5 h-5" strokeWidth={2} /></button></div></td>
+                                        <td className="px-6 py-4 text-right"><div className="flex justify-end gap-1"><button onClick={() => openEditModal(user)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors" aria-label={`Edit ${user.name}`}><Pencil className="w-5 h-5" strokeWidth={2} /></button><button onClick={() => setDeleteTarget(user)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" aria-label={`Delete ${user.name}`}><Trash2 className="w-5 h-5" strokeWidth={2} /></button></div></td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -108,18 +177,18 @@ const UserManagement = () => {
                 )}
 
                 <div className="px-6 py-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-                    <button onClick={() => fetchUsers(pagination.current_page - 1)} disabled={pagination.current_page <= 1} className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors"><ChevronLeft className="w-[18px] h-[18px]" strokeWidth={2} /> Previous</button>
+                    <button onClick={() => fetchUsers(pagination.current_page - 1)} disabled={pagination.current_page <= 1 || loading} className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors"><ChevronLeft className="w-[18px] h-[18px]" strokeWidth={2} /> Previous</button>
                     <div className="flex items-center gap-1">
                         {Array.from({ length: pagination.last_page }, (_, i) => (
-                            <button key={i} onClick={() => fetchUsers(i + 1)} className={`size-9 rounded-lg text-sm font-medium transition-colors ${pagination.current_page === i + 1 ? 'bg-primary text-white font-semibold' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{i + 1}</button>
+                            <button key={i} onClick={() => fetchUsers(i + 1)} disabled={loading} className={`size-9 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${pagination.current_page === i + 1 ? 'bg-primary text-white font-semibold' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{i + 1}</button>
                         ))}
                     </div>
-                    <button onClick={() => fetchUsers(pagination.current_page + 1)} disabled={pagination.current_page >= pagination.last_page} className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors">Next <ChevronRight className="w-[18px] h-[18px]" strokeWidth={2} /></button>
+                    <button onClick={() => fetchUsers(pagination.current_page + 1)} disabled={pagination.current_page >= pagination.last_page || loading} className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors">Next <ChevronRight className="w-[18px] h-[18px]" strokeWidth={2} /></button>
                 </div>
             </Card>
 
-            <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add New User">
-                <form className="space-y-4" onSubmit={handleCreate}>
+            <Modal isOpen={showModal} onClose={closeUserModal} title={editingUser ? 'Edit User' : 'Add New User'}>
+                <form className="space-y-4" onSubmit={handleSubmit}>
                     {formError && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg text-red-600 text-sm">{formError}</div>}
                     <div className="grid grid-cols-2 gap-4">
                         <Input label="First Name" placeholder="e.g. Jean" value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} required />
@@ -132,11 +201,30 @@ const UserManagement = () => {
                             <option value="">Select Role</option><option value="admin">Admin</option><option value="formateur">Formateur</option><option value="stagiaire">Stagiaire</option>
                         </select>
                     </div>
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Status</label>
+                        <select className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} required>
+                            <option value="active">Active</option><option value="inactive">Inactive</option>
+                        </select>
+                    </div>
                     <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 mt-6">
-                        <Button variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
-                        <Button type="submit" loading={submitting}>Create User</Button>
+                        <Button type="button" variant="ghost" onClick={closeUserModal}>Cancel</Button>
+                        <Button type="submit" loading={submitting}>{editingUser ? 'Save Changes' : 'Create User'}</Button>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete User" size="sm">
+                <div className="space-y-5">
+                    <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">Delete <span className="font-semibold text-slate-900 dark:text-white">{deleteTarget?.name}</span>?</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">This action cannot be undone.</p>
+                    </div>
+                    <div className="flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-4">
+                        <Button type="button" variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                        <Button type="button" variant="danger" loading={deleting} onClick={confirmDelete}>Delete User</Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

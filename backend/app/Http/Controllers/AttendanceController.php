@@ -12,7 +12,7 @@ class AttendanceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Attendance::with('user', 'class', 'markedBy');
+        $query = Attendance::with('user', 'classModel', 'marker');
 
         if ($request->has('class_id')) {
             $query->where('class_id', $request->class_id);
@@ -69,7 +69,7 @@ class AttendanceController extends Controller
 
             return response()->json([
                 'message' => 'Attendance updated successfully',
-                'data' => $existing->load('user', 'class', 'markedBy')
+                'data' => $existing->load('user', 'classModel', 'marker')
             ]);
         }
 
@@ -78,7 +78,7 @@ class AttendanceController extends Controller
 
         return response()->json([
             'message' => 'Attendance marked successfully',
-            'data' => $attendance->load('user', 'class', 'markedBy')
+            'data' => $attendance->load('user', 'classModel', 'marker')
         ], 201);
     }
 
@@ -93,7 +93,7 @@ class AttendanceController extends Controller
         }
 
         $attendance = Attendance::where('user_id', $userId)
-            ->with('class')
+            ->with('classModel')
             ->paginate($request->get('per_page', 15));
 
         return response()->json([
@@ -114,7 +114,7 @@ class AttendanceController extends Controller
     {
         $userId = auth()->id();
         $attendance = Attendance::where('user_id', $userId)
-            ->with('class')
+            ->with('classModel')
             ->paginate($request->get('per_page', 15));
 
         return response()->json([
@@ -144,8 +144,11 @@ class AttendanceController extends Controller
             'data' => [
                 'class_id' => $classId,
                 'attendance_rate' => $rate,
+                'rate' => $rate,
                 'present' => $presentCount,
+                'absent' => max($totalRecords - $presentCount, 0),
                 'total_records' => $totalRecords,
+                'total' => $totalRecords,
             ]
         ]);
     }

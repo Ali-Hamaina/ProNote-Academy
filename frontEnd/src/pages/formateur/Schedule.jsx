@@ -31,7 +31,7 @@ const Schedule = () => {
                             <span className="text-xs text-slate-400 font-medium">{s.date || ''}</span>
                         </div>
                         <h3 className="font-bold text-base mb-1">{s.title || s.module?.name || 'Session'}</h3>
-                        <p className="text-sm text-slate-500 mb-3">{s.class?.name || ''}</p>
+                        <p className="text-sm text-slate-500 mb-3">{s.class_model?.name || s.class?.name || ''}</p>
                         <div className="flex items-center gap-4 text-xs text-slate-400">
                             <span>{s.start_time || ''} - {s.end_time || ''}</span>
                             <span>{s.room || s.location || ''}</span>

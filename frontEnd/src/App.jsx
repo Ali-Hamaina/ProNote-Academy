@@ -95,7 +95,7 @@ function App() {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="classes" element={<AcademicSetup />} />
-        <Route path="modules" element={<AcademicSetup />} />
+        <Route path="modules" element={<Navigate to="../classes" replace />} />
         <Route path="statistics" element={<AdminDashboard />} />
         <Route path="settings" element={<Profile />} />
       </Route>

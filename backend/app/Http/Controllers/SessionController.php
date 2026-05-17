@@ -12,7 +12,7 @@ class SessionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Session::with('class', 'module', 'instructor');
+        $query = Session::with('classModel', 'module', 'instructor');
 
         if ($request->has('class_id')) {
             $query->where('class_id', $request->class_id);
@@ -59,7 +59,7 @@ class SessionController extends Controller
 
         return response()->json([
             'message' => 'Session created successfully',
-            'data' => $session->load('class', 'module', 'instructor')
+            'data' => $session->load('classModel', 'module', 'instructor')
         ], 201);
     }
 
@@ -69,7 +69,7 @@ class SessionController extends Controller
     public function show(Session $session)
     {
         return response()->json([
-            'data' => $session->load('class', 'module', 'instructor')
+            'data' => $session->load('classModel', 'module', 'instructor')
         ]);
     }
 
@@ -98,7 +98,7 @@ class SessionController extends Controller
 
         return response()->json([
             'message' => 'Session updated successfully',
-            'data' => $session->load('class', 'module', 'instructor')
+            'data' => $session->load('classModel', 'module', 'instructor')
         ]);
     }
 
@@ -131,7 +131,7 @@ class SessionController extends Controller
             // Formateur sees sessions they teach
             $sessions = Session::where('instructor_id', $user->id)
                 ->whereDate('start_time', $date)
-                ->with('class', 'module')
+                ->with('classModel', 'module')
                 ->orderBy('start_time')
                 ->get();
         } else if ($user->role === 'stagiaire') {
@@ -139,13 +139,13 @@ class SessionController extends Controller
             $enrolledClassIds = $user->enrolledClasses()->pluck('classes.id');
             $sessions = Session::whereIn('class_id', $enrolledClassIds)
                 ->whereDate('start_time', $date)
-                ->with('class', 'module', 'instructor')
+                ->with('classModel', 'module', 'instructor')
                 ->orderBy('start_time')
                 ->get();
         } else {
             // Admin sees all sessions
             $sessions = Session::whereDate('start_time', $date)
-                ->with('class', 'module', 'instructor')
+                ->with('classModel', 'module', 'instructor')
                 ->orderBy('start_time')
                 ->get();
         }

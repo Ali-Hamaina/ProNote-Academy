@@ -35,7 +35,7 @@ const MyAttendance = () => {
                     <thead className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800"><tr><th className="px-6 py-4 text-xs font-semibold uppercase text-slate-500">Module</th><th className="px-6 py-4 text-xs font-semibold uppercase text-slate-500">Date</th><th className="px-6 py-4 text-xs font-semibold uppercase text-slate-500">Status</th></tr></thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {records.length === 0 && <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">No attendance records</td></tr>}
-                        {records.map((r, i) => (<tr key={r.id||i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50"><td className="px-6 py-4 font-semibold">{r.session?.module?.name || r.module || '—'}</td><td className="px-6 py-4 text-slate-500">{r.date || r.created_at || ''}</td><td className="px-6 py-4"><Badge variant={r.status==='present'?'success':r.status==='late'?'warning':'danger'} size="sm">{r.status||'—'}</Badge></td></tr>))}
+                        {records.map((r, i) => (<tr key={r.id||i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50"><td className="px-6 py-4 font-semibold">{r.class_model?.name || r.class?.name || r.session?.module?.name || r.module || '—'}</td><td className="px-6 py-4 text-slate-500">{r.session_date || r.date || r.created_at || ''}</td><td className="px-6 py-4"><Badge variant={r.status==='present'?'success':r.status==='late'?'warning':'danger'} size="sm">{r.status||'—'}</Badge></td></tr>))}
                     </tbody>
                 </table></div>
             </Card>

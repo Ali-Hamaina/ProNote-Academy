@@ -24,7 +24,7 @@ class AttendanceService
             ]
         );
 
-        return $attendance->load('user', 'class', 'markedBy');
+        return $attendance->load('user', 'classModel', 'marker');
     }
 
     /**

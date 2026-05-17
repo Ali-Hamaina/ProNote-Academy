@@ -119,6 +119,7 @@ class DashboardController extends Controller
             $data = $classes->items();
             foreach ($data as $class) {
                 $class->completion = rand(40, 95);
+                $class->formateur = $class->instructor;
             }
 
             return response()->json([
@@ -158,6 +159,7 @@ class DashboardController extends Controller
             'data' => [
                 'active_modules' => $activeModules,
                 'ungraded_assessments' => $ungradedCount,
+                'ungraded_count' => $ungradedCount,
                 'classes_taught' => $classes,
             ]
         ]);
@@ -170,7 +172,7 @@ class DashboardController extends Controller
     {
         $formateurId = auth()->id();
 
-        $students = User::whereHas('enrollments.class', function ($query) use ($formateurId) {
+        $students = User::whereHas('enrollments.classModel', function ($query) use ($formateurId) {
             $query->where('instructor_id', $formateurId);
         })
         ->with('enrollments')
@@ -201,12 +203,15 @@ class DashboardController extends Controller
         // Get enrollments
         $enrollments = Enrollment::where('user_id', $studentId)->count();
         $modulesCompleted = Module::count(); // Simplified
+        $modulesTotal = Module::count();
 
         return response()->json([
             'data' => [
                 'semester_average' => round($semesterAverage, 2),
+                'average' => round($semesterAverage, 2),
                 'enrollments' => $enrollments,
                 'modules_completed' => $modulesCompleted,
+                'modules_total' => $modulesTotal,
             ]
         ]);
     }
@@ -219,17 +224,22 @@ class DashboardController extends Controller
         $studentId = auth()->id();
 
         $enrollments = Enrollment::where('user_id', $studentId)
-            ->with('class.modules')
-            ->paginate($request->get('per_page', 15));
+            ->with('classModel.modules.instructor')
+            ->get();
+
+        $modules = $enrollments
+            ->flatMap(function ($enrollment) {
+                return $enrollment->classModel?->modules->map(function ($module) use ($enrollment) {
+                    $module->progress = $enrollment->progress;
+                    $module->class_name = $enrollment->classModel?->name;
+                    return $module;
+                }) ?? collect();
+            })
+            ->unique('id')
+            ->values();
 
         return response()->json([
-            'data' => $enrollments->items(),
-            'pagination' => [
-                'current_page' => $enrollments->currentPage(),
-                'per_page' => $enrollments->perPage(),
-                'total' => $enrollments->total(),
-                'last_page' => $enrollments->lastPage(),
-            ]
+            'data' => $modules,
         ]);
     }
 }

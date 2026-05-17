@@ -50,7 +50,7 @@ const MyGrades = () => {
                 <Card hover className="text-center">
                     <div className="bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 size-14 rounded-2xl flex items-center justify-center mx-auto mb-4"><GraduationCap className="w-7 h-7" strokeWidth={2} /></div>
                     <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Modules Graded</p>
-                    <p className="text-3xl font-bold mt-1 tracking-tight">{stats.count || grades.length}</p>
+                    <p className="text-3xl font-bold mt-1 tracking-tight">{stats.modules_graded || stats.count || grades.length}</p>
                 </Card>
             </div>
 
@@ -73,13 +73,13 @@ const MyGrades = () => {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {grades.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400">No grades yet</td></tr>}
                             {grades.map((grade, index) => {
-                                const val = grade.grade || grade.value || 0;
+                                const val = Number(grade.grade_value ?? grade.grade ?? grade.value ?? 0);
                                 return (
                                     <tr key={grade.id || index} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                                         <td className="px-6 py-4"><p className="text-sm font-semibold text-slate-900 dark:text-white">{grade.module?.name || grade.module || ''}</p></td>
-                                        <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{grade.formateur?.name || grade.formateur || ''}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{grade.grader?.name || grade.formateur?.name || grade.formateur || ''}</td>
                                         <td className="px-6 py-4"><span className={`text-lg font-bold ${getGradeColor(val)}`}>{val}</span><span className="text-slate-400 text-sm">/ {grade.max || 20}</span></td>
-                                        <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{grade.date || grade.created_at || ''}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{grade.graded_at || grade.date || grade.created_at || ''}</td>
                                         <td className="px-6 py-4"><Badge variant={getStatusVariant(val)} size="sm">{grade.status || getStatusLabel(val)}</Badge></td>
                                     </tr>
                                 );

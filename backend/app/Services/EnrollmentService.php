@@ -21,7 +21,7 @@ class EnrollmentService
 
         event(new UserEnrolled($enrollment));
 
-        return $enrollment->load('user', 'class');
+        return $enrollment->load('user', 'classModel');
     }
 
     /**
@@ -30,7 +30,7 @@ class EnrollmentService
     public function getStudentProgress(int $userId): array
     {
         $enrollments = Enrollment::where('user_id', $userId)
-            ->with('class.modules')
+            ->with('classModel.modules')
             ->get();
 
         $totalProgress = 0;

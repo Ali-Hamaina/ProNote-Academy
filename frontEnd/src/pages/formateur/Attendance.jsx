@@ -28,7 +28,12 @@ const Attendance = () => {
             try {
                 const [recRes, rateRes] = await Promise.all([attendanceService.getAll({ class_id: selectedClass }), attendanceService.getClassRate(selectedClass)]);
                 const d = recRes.data || recRes; setRecords(Array.isArray(d) ? d : d.data || []);
-                setRate(rateRes.data || rateRes);
+                const rateData = rateRes.data || rateRes;
+                setRate({
+                    ...rateData,
+                    rate: rateData.rate ?? rateData.attendance_rate ?? 0,
+                    absent: rateData.absent ?? Math.max((rateData.total_records ?? rateData.total ?? 0) - (rateData.present ?? 0), 0),
+                });
             } catch { setRecords([]); }
             setRecordsLoading(false);
         };
@@ -57,7 +62,7 @@ const Attendance = () => {
                         <thead className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800"><tr><th className="px-6 py-4 text-xs font-semibold uppercase text-slate-500">Student</th><th className="px-6 py-4 text-xs font-semibold uppercase text-slate-500">Date</th><th className="px-6 py-4 text-xs font-semibold uppercase text-slate-500">Status</th><th className="px-6 py-4 text-xs font-semibold uppercase text-slate-500">Notes</th></tr></thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {records.length === 0 && <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">{selectedClass ? 'No attendance records' : 'Select a class'}</td></tr>}
-                            {records.map((r, i) => (<tr key={r.id||i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50"><td className="px-6 py-4 font-semibold">{r.student?.name||''}</td><td className="px-6 py-4 text-slate-500">{r.date||r.created_at||''}</td><td className="px-6 py-4"><Badge variant={r.status==='present'?'success':r.status==='late'?'warning':'danger'} size="sm">{r.status||'—'}</Badge></td><td className="px-6 py-4 text-slate-500 text-sm">{r.notes||'—'}</td></tr>))}
+                            {records.map((r, i) => (<tr key={r.id||i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50"><td className="px-6 py-4 font-semibold">{r.user?.name || r.student?.name || ''}</td><td className="px-6 py-4 text-slate-500">{r.session_date || r.date || r.created_at || ''}</td><td className="px-6 py-4"><Badge variant={r.status==='present'?'success':r.status==='late'?'warning':'danger'} size="sm">{r.status||'—'}</Badge></td><td className="px-6 py-4 text-slate-500 text-sm">{r.notes||'—'}</td></tr>))}
                         </tbody>
                     </table></div>
                 )}

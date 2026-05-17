@@ -23,6 +23,10 @@ class GradeController extends Controller
             $query->where('module_id', $request->module_id);
         }
 
+        if ($request->has('class_id')) {
+            $query->whereHas('module', fn ($moduleQuery) => $moduleQuery->where('class_id', $request->class_id));
+        }
+
         if ($request->has('user_id')) {
             $query->where('user_id', $request->user_id);
         }

@@ -12,7 +12,7 @@ class EnrollmentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Enrollment::with('user', 'class');
+        $query = Enrollment::with('user', 'classModel');
 
         if ($request->has('user_id')) {
             $query->where('user_id', $request->user_id);
@@ -69,7 +69,7 @@ class EnrollmentController extends Controller
 
         return response()->json([
             'message' => 'Enrollment created successfully',
-            'data' => $enrollment->load('user', 'class')
+            'data' => $enrollment->load('user', 'classModel')
         ], 201);
     }
 
@@ -79,7 +79,7 @@ class EnrollmentController extends Controller
     public function show(Enrollment $enrollment)
     {
         return response()->json([
-            'data' => $enrollment->load('user', 'class')
+            'data' => $enrollment->load('user', 'classModel')
         ]);
     }
 
@@ -97,7 +97,7 @@ class EnrollmentController extends Controller
 
         return response()->json([
             'message' => 'Enrollment updated successfully',
-            'data' => $enrollment->load('user', 'class')
+            'data' => $enrollment->load('user', 'classModel')
         ]);
     }
 

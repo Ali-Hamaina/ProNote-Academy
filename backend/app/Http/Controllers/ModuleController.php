@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Module;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ModuleController extends Controller
 {
@@ -12,7 +13,7 @@ class ModuleController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Module::with('class', 'instructor');
+        $query = Module::with('classModel', 'instructor');
 
         if ($request->has('class_id')) {
             $query->where('class_id', $request->class_id);
@@ -44,7 +45,13 @@ class ModuleController extends Controller
         $validated = $request->validate([
             'class_id' => 'required|exists:classes,id',
             'name' => 'required|string|max:255',
-            'block_number' => 'required|integer|min:1',
+            'block_number' => [
+                'required',
+                'integer',
+                'min:1',
+                Rule::unique('modules', 'block_number')
+                    ->where(fn ($query) => $query->where('class_id', $request->class_id)),
+            ],
             'hours' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',
             'instructor_id' => 'required|exists:users,id',
@@ -58,7 +65,7 @@ class ModuleController extends Controller
 
         return response()->json([
             'message' => 'Module created successfully',
-            'data' => $module->load('class', 'instructor')
+            'data' => $module->load('classModel', 'instructor')
         ], 201);
     }
 
@@ -68,7 +75,7 @@ class ModuleController extends Controller
     public function show(Module $module)
     {
         return response()->json([
-            'data' => $module->load('class', 'instructor', 'grades')
+            'data' => $module->load('classModel', 'instructor', 'grades')
         ]);
     }
 
@@ -78,8 +85,17 @@ class ModuleController extends Controller
     public function update(Request $request, Module $module)
     {
         $validated = $request->validate([
+            'class_id' => 'sometimes|required|exists:classes,id',
             'name' => 'sometimes|required|string|max:255',
-            'block_number' => 'sometimes|required|integer|min:1',
+            'block_number' => [
+                'sometimes',
+                'required',
+                'integer',
+                'min:1',
+                Rule::unique('modules', 'block_number')
+                    ->where(fn ($query) => $query->where('class_id', $request->input('class_id', $module->class_id)))
+                    ->ignore($module->id),
+            ],
             'hours' => 'sometimes|required|integer|min:1',
             'description' => 'nullable|string|max:1000',
             'instructor_id' => 'sometimes|required|exists:users,id',
@@ -90,7 +106,7 @@ class ModuleController extends Controller
 
         return response()->json([
             'message' => 'Module updated successfully',
-            'data' => $module->load('class', 'instructor')
+            'data' => $module->load('classModel', 'instructor')
         ]);
     }
 

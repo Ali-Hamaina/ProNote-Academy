@@ -40,7 +40,7 @@ class DashboardService
                 ->whereNull('graded_at')
                 ->count(),
             'classes_taught' => ClassModel::where('instructor_id', $formateurId)->count(),
-            'total_students' => User::whereHas('enrollments.class', function ($query) use ($formateurId) {
+            'total_students' => User::whereHas('enrollments.classModel', function ($query) use ($formateurId) {
                 $query->where('instructor_id', $formateurId);
             })->count(),
             'class_success_rate' => $this->getFormateurSuccessRate($formateurId),
@@ -110,7 +110,7 @@ class DashboardService
      */
     public function getFormateurSuccessRate(int $formateurId): float
     {
-        $students = User::whereHas('enrollments.class', function ($query) use ($formateurId) {
+        $students = User::whereHas('enrollments.classModel', function ($query) use ($formateurId) {
             $query->where('instructor_id', $formateurId);
         })->pluck('id');
 

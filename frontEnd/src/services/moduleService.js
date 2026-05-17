@@ -33,7 +33,8 @@ const moduleService = {
 
     // Reorder modules
     async reorder(orderedIds) {
-        const response = await api.post('/modules/reorder', { modules: orderedIds });
+        const modules = orderedIds.map((id, order) => ({ id, order }));
+        const response = await api.post('/modules/reorder', { modules });
         return response.data;
     },
 };

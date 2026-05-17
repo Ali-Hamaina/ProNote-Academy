@@ -20,9 +20,6 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-Route::get('/sanctum/csrf-cookie', function () {
-    return response()->json(['csrfToken' => csrf_token()]);
-});
 
 // Protected routes (require authentication)
 Route::middleware('auth:sanctum')->group(function () {
@@ -38,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Announcements & Notifications (all users)
     Route::get('/announcements', [AnnouncementController::class, 'index']);
+    Route::post('/announcements', [AnnouncementController::class, 'store'])->middleware('role:admin,formateur');
     Route::put('/announcements/{id}/read', [AnnouncementController::class, 'markAsRead']);
     Route::put('/announcements/mark-all-read', [AnnouncementController::class, 'markAllAsRead']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
@@ -49,7 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Class management
         Route::apiResource('classes', ClassController::class);
-        Route::get('/classes/{id}/modules', [ClassController::class, 'modules']);
+        Route::get('/classes/{class}/modules', [ClassController::class, 'modules']);
 
         // Module management
         Route::apiResource('modules', ModuleController::class);
@@ -58,8 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Enrollment management
         Route::apiResource('enrollments', EnrollmentController::class);
 
-        // Announcements (create/update/delete)
-        Route::post('/announcements', [AnnouncementController::class, 'store']);
+        // Announcements (update/delete)
         Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
         Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
 
@@ -77,7 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Grades
         Route::post('/grades', [GradeController::class, 'store']);
-        Route::put('/grades/{id}', [GradeController::class, 'update']);
+        Route::put('/grades/{grade}', [GradeController::class, 'update']);
         Route::get('/grades', [GradeController::class, 'index'])->middleware('role:formateur');
         Route::get('/grades/module/{moduleId}', [GradeController::class, 'getModuleGrades']);
         Route::get('/grades/ungraded', [GradeController::class, 'ungraded']);
@@ -87,14 +84,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/attendance', [AttendanceController::class, 'index']);
         Route::get('/attendance/class/{classId}/rate', [AttendanceController::class, 'classRate']);
 
-        // Sessions/Schedule
-        Route::apiResource('schedule', SessionController::class);
+        // Sessions/Schedule CRUD for formateurs
+        Route::apiResource('formateur/schedule', SessionController::class);
 
         // Tasks
         Route::apiResource('formateur/tasks', TaskController::class);
-
-        // Announcements (create/update/delete for their own announcements)
-        Route::post('/announcements', [AnnouncementController::class, 'store']);
 
         // Dashboard
         Route::get('/formateur/dashboard', [DashboardController::class, 'formateurDashboard']);
@@ -121,7 +115,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Resources (view/download)
         Route::get('/resources', [ResourceController::class, 'index']);
-        Route::get('/resources/{id}', [ResourceController::class, 'show']);
+        Route::get('/resources/{resource}', [ResourceController::class, 'show']);
     });
 
     // Common accessible by multiple roles (but with appropriate filtering)

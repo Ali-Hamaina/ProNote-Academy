@@ -24,7 +24,7 @@ const Grades = () => {
         if (!selectedClass) return;
         const fetch = async () => {
             setGradesLoading(true);
-            try { const r = await gradeService.getModuleGrades(selectedClass); const d = r.data || r; setGrades(Array.isArray(d) ? d : d.data || []); } catch { setGrades([]); }
+            try { const r = await gradeService.getAll({ class_id: selectedClass }); const d = r.data || r; setGrades(Array.isArray(d) ? d : d.data || []); } catch { setGrades([]); }
             setGradesLoading(false);
         };
         fetch();
@@ -50,7 +50,10 @@ const Grades = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {grades.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400">{selectedClass ? 'No grades for this module' : 'Select a class to view grades'}</td></tr>}
-                                {grades.map((g, i) => (<tr key={g.id || i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"><td className="px-6 py-4 font-semibold">{g.student?.name || ''}</td><td className="px-6 py-4 text-slate-500">{g.module?.name || ''}</td><td className="px-6 py-4"><span className={`text-lg font-bold ${(g.grade||0)>=16?'text-emerald-600':(g.grade||0)>=12?'text-amber-600':'text-red-600'}`}>{g.grade||0}</span><span className="text-slate-400 text-sm">/ 20</span></td><td className="px-6 py-4 text-slate-500">{g.date || g.created_at || ''}</td><td className="px-6 py-4 text-right"><button className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"><span className="material-symbols-outlined text-[20px]">edit</span></button></td></tr>))}
+                                {grades.map((g, i) => {
+                                    const value = Number(g.grade_value ?? g.grade ?? 0);
+                                    return (<tr key={g.id || i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"><td className="px-6 py-4 font-semibold">{g.student?.name || ''}</td><td className="px-6 py-4 text-slate-500">{g.module?.name || ''}</td><td className="px-6 py-4"><span className={`text-lg font-bold ${value>=16?'text-emerald-600':value>=12?'text-amber-600':'text-red-600'}`}>{value}</span><span className="text-slate-400 text-sm">/ 20</span></td><td className="px-6 py-4 text-slate-500">{g.graded_at || g.created_at || ''}</td><td className="px-6 py-4 text-right"><button className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"><span className="material-symbols-outlined text-[20px]">edit</span></button></td></tr>);
+                                })}
                             </tbody>
                         </table>
                     </div>

@@ -13,7 +13,8 @@ import {
     Settings,
     LogOut,
     Plus,
-    FolderOpen
+    FolderOpen,
+    Layers
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose, role = 'admin' }) => {
@@ -29,8 +30,7 @@ const Sidebar = ({ isOpen, onClose, role = 'admin' }) => {
         admin: [
             { icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
             { icon: Users, label: 'Users', to: '/admin/users' },
-            { icon: School, label: 'Classes', to: '/admin/classes' },
-            { icon: BookOpen, label: 'Modules', to: '/admin/modules' },
+            { icon: Layers, label: 'Class & Module Setup', to: '/admin/classes' },
             { icon: BarChart3, label: 'Statistics', to: '/admin/statistics' },
         ],
         formateur: [
@@ -111,7 +111,7 @@ const Sidebar = ({ isOpen, onClose, role = 'admin' }) => {
 
                     <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
                         {role === 'admin' && (
-                            <button className="w-full bg-primary text-primary text-sm font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 active:scale-[0.98]">
+                            <button className="w-full bg-primary text-white text-sm font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 active:scale-[0.98]">
                                 <Plus className="w-5 h-5" strokeWidth={2} />
                                 <span>New Instance</span>
                             </button>
