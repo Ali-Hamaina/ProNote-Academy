@@ -12,22 +12,27 @@ class ClassController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ClassModel::with('instructor', 'enrollments')
-            ->when($request->search, fn($q) => $q->where('name', 'like', '%' . $request->search . '%')
-                ->orWhere('code', 'like', '%' . $request->search . '%'));
+        try {
+            $query = ClassModel::with('instructor', 'enrollments')
+                ->when($request->search, fn($q) => $q->where('name', 'like', '%' . $request->search . '%')
+                    ->orWhere('code', 'like', '%' . $request->search . '%'));
 
-        $perPage = $request->get('per_page', 15);
-        $classes = $query->paginate($perPage);
+            $perPage = $request->get('per_page', 15);
+            $classes = $query->paginate($perPage);
 
-        return response()->json([
-            'data' => $classes->items(),
-            'pagination' => [
-                'current_page' => $classes->currentPage(),
-                'per_page' => $classes->perPage(),
-                'total' => $classes->total(),
-                'last_page' => $classes->lastPage(),
-            ]
-        ]);
+            return response()->json([
+                'data' => $classes->items(),
+                'pagination' => [
+                    'current_page' => $classes->currentPage(),
+                    'per_page' => $classes->perPage(),
+                    'total' => $classes->total(),
+                    'last_page' => $classes->lastPage(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in ClassController::index: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch classes', 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -102,11 +107,16 @@ class ClassController extends Controller
      */
     public function modules(ClassModel $class)
     {
-        $modules = $class->modules()->with('instructor')->orderBy('order_position')->get();
+        try {
+            $modules = $class->modules()->with('instructor')->orderBy('order_position')->get();
 
-        return response()->json([
-            'data' => $modules
-        ]);
+            return response()->json([
+                'data' => $modules
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in ClassController::modules: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch modules', 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**

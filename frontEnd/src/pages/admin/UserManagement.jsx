@@ -54,10 +54,10 @@ const UserManagement = () => {
     const roleColors = { admin: 'warning', Admin: 'warning', formateur: 'primary', Formateur: 'primary', stagiaire: 'purple', Stagiaire: 'purple' };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" >
             <Breadcrumbs items={[{ label: 'User Management' }]} />
             <PageHeader title="User Management" subtitle="Manage and organize trainers, students, and administrative staff.">
-                <Button icon={UserPlus} onClick={() => setShowModal(true)}>Add New User</Button>
+                <Button  icon={UserPlus} onClick={() => setShowModal(true)}>Add New User</Button>
             </PageHeader>
 
             <Card padding="none">

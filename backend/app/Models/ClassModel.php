@@ -41,7 +41,7 @@ class ClassModel extends Model
      */
     public function modules()
     {
-        return $this->hasMany(Module::class)->orderBy('order_position');
+        return $this->hasMany(Module::class, 'class_id', 'id')->orderBy('order_position');
     }
 
     /**
@@ -49,7 +49,7 @@ class ClassModel extends Model
      */
     public function enrollments()
     {
-        return $this->hasMany(Enrollment::class);
+        return $this->hasMany(Enrollment::class, 'class_id', 'id');
     }
 
     /**
@@ -65,7 +65,7 @@ class ClassModel extends Model
      */
     public function sessions()
     {
-        return $this->hasMany(Session::class);
+        return $this->hasMany(Session::class, 'class_id', 'id');
     }
 
     /**
@@ -73,7 +73,7 @@ class ClassModel extends Model
      */
     public function announcements()
     {
-        return $this->hasMany(Announcement::class);
+        return $this->hasMany(Announcement::class, 'class_id', 'id');
     }
 
     /**
@@ -81,7 +81,7 @@ class ClassModel extends Model
      */
     public function attendance()
     {
-        return $this->hasMany(Attendance::class);
+        return $this->hasMany(Attendance::class, 'class_id', 'id');
     }
 
     /**

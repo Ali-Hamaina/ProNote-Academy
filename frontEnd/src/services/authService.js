@@ -10,7 +10,7 @@ const authService = {
 
     // Login
     async login(email, password) {
-        await this.getCsrfCookie();
+        // For API routes with Sanctum, we don't need CSRF for token-based auth
         const response = await api.post('/login', { email, password });
         return response.data;
     },
