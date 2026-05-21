@@ -5,6 +5,7 @@ import { Loader2, Pencil, Trash2 } from 'lucide-react';
 import classService from '../../services/classService';
 import moduleService from '../../services/moduleService';
 import userService from '../../services/userService';
+import enrollmentService from '../../services/enrollmentService';
 
 const emptyClassForm = {
     name: '',
@@ -46,6 +47,13 @@ const AcademicSetup = () => {
     const [formateurs, setFormateurs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modulesLoading, setModulesLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('modules');
+    const [enrollments, setEnrollments] = useState([]);
+    const [stagiaires, setStagiaires] = useState([]);
+    const [enrollmentModal, setEnrollmentModal] = useState(false);
+    const [enrollmentForm, setEnrollmentForm] = useState({ user_id: '' });
+    const [enrollmentSubmitting, setEnrollmentSubmitting] = useState(false);
+    const [enrollmentError, setEnrollmentError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -101,6 +109,19 @@ const AcademicSetup = () => {
         setFormateurs(getRows(response));
     };
 
+    const fetchStagiaires = async () => {
+        const response = await userService.getAll({ role: 'stagiaire', status: 'active', per_page: 200 });
+        setStagiaires(getRows(response));
+    };
+
+    const fetchEnrollments = async (classId) => {
+        if (!classId) { setEnrollments([]); return; }
+        try {
+            const response = await enrollmentService.getAll({ class_id: classId, per_page: 200 });
+            setEnrollments(getRows(response));
+        } catch { setEnrollments([]); }
+    };
+
     useEffect(() => {
         const bootstrap = async () => {
             setLoading(true);
@@ -108,9 +129,15 @@ const AcademicSetup = () => {
                 const [classId] = await Promise.all([
                     fetchClasses(),
                     fetchFormateurs(),
+                    fetchStagiaires(),
                 ]);
 
-                if (classId) await fetchModules(classId);
+                if (classId) {
+                    await Promise.all([
+                        fetchModules(classId),
+                        fetchEnrollments(classId),
+                    ]);
+                }
             } catch {
                 setClasses([]);
                 setModules([]);
@@ -125,6 +152,7 @@ const AcademicSetup = () => {
 
     useEffect(() => {
         fetchModules(selectedClass);
+        fetchEnrollments(selectedClass);
     }, [selectedClass]);
 
     const openCreateClass = () => {
@@ -268,6 +296,33 @@ const AcademicSetup = () => {
         }
     };
 
+    const openEnrollStudent = () => {
+        setEnrollmentForm({ user_id: stagiaires[0]?.id || '' });
+        setEnrollmentError('');
+        setEnrollmentModal(true);
+    };
+
+    const handleEnrollSubmit = async (e) => {
+        e.preventDefault();
+        setEnrollmentSubmitting(true);
+        setEnrollmentError('');
+        try {
+            await enrollmentService.create({ user_id: Number(enrollmentForm.user_id), class_id: selectedClass });
+            setEnrollmentModal(false);
+            await fetchEnrollments(selectedClass);
+        } catch (err) {
+            setEnrollmentError(err.response?.data?.error || err.response?.data?.message || 'Failed to enroll student.');
+        }
+        setEnrollmentSubmitting(false);
+    };
+
+    const removeEnrollment = async (enrollmentId) => {
+        try {
+            await enrollmentService.delete(enrollmentId);
+            await fetchEnrollments(selectedClass);
+        } catch {}
+    };
+
     const renderFormateurOptions = () => (
         <>
             <option value="">Select formateur</option>
@@ -339,56 +394,91 @@ const AcademicSetup = () => {
                         <div className="flex items-center gap-4 min-w-0">
                             <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0"><span className="material-symbols-outlined text-[28px]">terminal</span></div>
                             <div className="min-w-0">
-                                <h2 className="text-lg font-bold leading-none mb-1 truncate">Modules for {selectedClassObj?.name || '...'}</h2>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Manage class details and curriculum blocks.</p>
+                                <h2 className="text-lg font-bold leading-none mb-1 truncate">{selectedClassObj?.name || '...'}</h2>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Manage class details, modules, and students.</p>
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Button variant="secondary" icon={Pencil} disabled={!selectedClassObj} onClick={() => openEditClass(selectedClassObj)}>Edit Class</Button>
                             <Button variant="danger" icon={Trash2} disabled={!selectedClassObj} onClick={() => setDeleteModal({ open: true, type: 'class', item: selectedClassObj })}>Delete Class</Button>
-                            <Button icon="add_circle" disabled={!selectedClassObj} onClick={openCreateModule}>Add Module</Button>
                         </div>
                     </div>
 
+                    {/* Tabs */}
+                    {selectedClassObj && (
+                        <div className="flex border-b border-slate-100 dark:border-slate-800 px-5">
+                            <button onClick={() => setActiveTab('modules')} className={`px-4 py-3 text-sm font-semibold border-b-2 transition-all ${activeTab === 'modules' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Modules</button>
+                            <button onClick={() => setActiveTab('students')} className={`px-4 py-3 text-sm font-semibold border-b-2 transition-all ${activeTab === 'students' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Students ({enrollments.length})</button>
+                        </div>
+                    )}
+
                     <div className="flex-1 overflow-y-auto p-5">
-                        {modulesLoading ? (
-                            <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-                        ) : (
-                            <div className="grid grid-cols-1 gap-4">
-                                {!selectedClassObj && <p className="text-center text-slate-400 py-8">Create or select a class first</p>}
-                                {selectedClassObj && modules.length === 0 && <p className="text-center text-slate-400 py-8">No modules assigned to this class</p>}
+                        {!selectedClassObj && <p className="text-center text-slate-400 py-8">Create or select a class first</p>}
 
-                                {modules.map((item, index) => (
-                                    <div key={item.id || index} className="group relative flex items-center gap-4 p-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary/50 hover:shadow-md transition-all">
-                                        <div className="text-slate-300 dark:text-slate-600 flex items-center"><span className="material-symbols-outlined text-[22px]">drag_indicator</span></div>
-                                        <div className="flex-1 flex flex-col gap-2 min-w-0">
-                                            <div className="flex items-center gap-3 flex-wrap">
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-lg">Block {item.block_number || item.order_position || index + 1}</span>
-                                                <h4 className="font-bold text-base text-slate-900 dark:text-white truncate">{item.name}</h4>
+                        {activeTab === 'modules' && (
+                            modulesLoading ? (
+                                <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {modules.length === 0 && <p className="text-center text-slate-400 py-8">No modules assigned to this class</p>}
+
+                                    {modules.map((item, index) => (
+                                        <div key={item.id || index} className="group relative flex items-center gap-4 p-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary/50 hover:shadow-md transition-all">
+                                            <div className="text-slate-300 dark:text-slate-600 flex items-center"><span className="material-symbols-outlined text-[22px]">drag_indicator</span></div>
+                                            <div className="flex-1 flex flex-col gap-2 min-w-0">
+                                                <div className="flex items-center gap-3 flex-wrap">
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-lg">Block {item.block_number || item.order_position || index + 1}</span>
+                                                    <h4 className="font-bold text-base text-slate-900 dark:text-white truncate">{item.name}</h4>
+                                                </div>
+                                                <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
+                                                    <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[14px]">schedule</span> {item.hours || 0} Hours</span>
+                                                    <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[14px]">person</span> {item.instructor?.name || 'No formateur'}</span>
+                                                    <span className="flex items-center gap-1.5"><span className={`material-symbols-outlined text-[14px] ${item.status === 'published' ? 'text-emerald-500' : 'text-orange-500'}`}>{item.status === 'published' ? 'check_circle' : 'pending'}</span><span className={item.status === 'published' ? 'text-emerald-600' : 'text-orange-600'}>{item.status || 'draft'}</span></span>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
-                                                <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[14px]">schedule</span> {item.hours || 0} Hours</span>
-                                                <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[14px]">person</span> {item.instructor?.name || 'No formateur'}</span>
-                                                <span className="flex items-center gap-1.5"><span className={`material-symbols-outlined text-[14px] ${item.status === 'published' ? 'text-emerald-500' : 'text-orange-500'}`}>{item.status === 'published' ? 'check_circle' : 'pending'}</span><span className={item.status === 'published' ? 'text-emerald-600' : 'text-orange-600'}>{item.status || 'draft'}</span></span>
+                                            <div className="flex items-center gap-1">
+                                                <button type="button" onClick={() => openEditModule(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 transition-colors" aria-label={`Edit ${item.name}`}>
+                                                    <Pencil className="w-5 h-5" strokeWidth={2} />
+                                                </button>
+                                                <button type="button" onClick={() => setDeleteModal({ open: true, type: 'module', item })} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-400 hover:text-red-500 transition-colors" aria-label={`Delete ${item.name}`}>
+                                                    <Trash2 className="w-5 h-5" strokeWidth={2} />
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <button type="button" onClick={() => openEditModule(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 transition-colors" aria-label={`Edit ${item.name}`}>
-                                                <Pencil className="w-5 h-5" strokeWidth={2} />
-                                            </button>
-                                            <button type="button" onClick={() => setDeleteModal({ open: true, type: 'module', item })} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-400 hover:text-red-500 transition-colors" aria-label={`Delete ${item.name}`}>
-                                                <Trash2 className="w-5 h-5" strokeWidth={2} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
 
-                                {selectedClassObj && (
                                     <button type="button" onClick={openCreateModule} className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-8 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:border-primary/50 cursor-pointer transition-all bg-slate-50/30 dark:bg-slate-800/20 group">
                                         <span className="material-symbols-outlined text-4xl mb-2 group-hover:scale-110 transition-transform">post_add</span>
                                         <span className="font-medium">Add Next Curriculum Module</span>
                                     </button>
-                                )}
+                                </div>
+                            )
+                        )}
+
+                        {activeTab === 'students' && (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <p className="text-sm text-slate-500">{enrollments.length} student{enrollments.length !== 1 ? 's' : ''} enrolled</p>
+                                    <Button icon="person_add" onClick={openEnrollStudent}>Add Student</Button>
+                                </div>
+                                {enrollments.length === 0 && <p className="text-center text-slate-400 py-8">No students enrolled in this class</p>}
+                                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {enrollments.map((e, i) => (
+                                        <div key={e.id || i} className="flex items-center justify-between py-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary"><span className="material-symbols-outlined text-[18px]">person</span></div>
+                                                <div>
+                                                    <p className="text-sm font-semibold">{e.user?.name || 'Unknown'}</p>
+                                                    <p className="text-xs text-slate-500">{e.user?.email || ''}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${e.status === 'active' ? 'bg-emerald-50 text-emerald-600' : e.status === 'completed' ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>{e.status}</span>
+                                                <button onClick={() => removeEnrollment(e.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"><span className="material-symbols-outlined text-[18px]">remove_circle</span></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -463,6 +553,23 @@ const AcademicSetup = () => {
                     <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
                         <Button type="button" variant="ghost" onClick={closeModals}>Cancel</Button>
                         <Button type="submit" loading={submitting}>{moduleModal.item ? 'Save Module' : 'Add Module'}</Button>
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal isOpen={enrollmentModal} onClose={() => setEnrollmentModal(false)} title="Add Student to Class" size="sm">
+                <form className="space-y-4" onSubmit={handleEnrollSubmit}>
+                    {enrollmentError && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg text-red-600 text-sm">{enrollmentError}</div>}
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Student</label>
+                        <select value={enrollmentForm.user_id} onChange={(e) => setEnrollmentForm({ ...enrollmentForm, user_id: e.target.value })} required className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                            <option value="">Select a student</option>
+                            {stagiaires.filter(s => !enrollments.find(e => e.user_id === s.id)).map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
+                        </select>
+                    </div>
+                    <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                        <Button type="button" variant="ghost" onClick={() => setEnrollmentModal(false)}>Cancel</Button>
+                        <Button type="submit" loading={enrollmentSubmitting}>Enroll Student</Button>
                     </div>
                 </form>
             </Modal>

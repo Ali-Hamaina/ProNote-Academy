@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Card, Button, Input, PageHeader } from '../components/common';
+import { Card, Button, Input, Modal, PageHeader } from '../components/common';
 import { Breadcrumbs } from '../components/layout';
 import profileService from '../services/profileService';
 
@@ -11,14 +11,23 @@ const Profile = () => {
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', bio: '' });
+    const [passwordModal, setPasswordModal] = useState(false);
+    const [historyModal, setHistoryModal] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ current_password: '', password: '', password_confirmation: '' });
+    const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+    const [profileData, setProfileData] = useState(null);
 
     useEffect(() => {
         const fetchProfile = async () => {
             try {
                 const res = await profileService.get();
                 const d = res.data || res;
+                setProfileData(d);
                 setFormData({ name: d.name || '', email: d.email || '', phone: d.phone || '', bio: d.bio || '' });
             } catch {
+                setProfileData(user);
                 setFormData({ name: user?.name || '', email: user?.email || '', phone: '', bio: '' });
             }
         };
@@ -39,6 +48,50 @@ const Profile = () => {
             setError(err.response?.data?.message || 'Failed to update profile.');
         }
         setLoading(false);
+    };
+
+    const handlePasswordChange = async (e) => {
+        e.preventDefault();
+        setPasswordSubmitting(true);
+        setPasswordError('');
+        setPasswordSuccess('');
+
+        if (passwordForm.password !== passwordForm.password_confirmation) {
+            setPasswordError('Passwords do not match');
+            setPasswordSubmitting(false);
+            return;
+        }
+
+        if (passwordForm.password.length < 8) {
+            setPasswordError('Password must be at least 8 characters');
+            setPasswordSubmitting(false);
+            return;
+        }
+
+        try {
+            await profileService.changePassword(
+                passwordForm.current_password,
+                passwordForm.password,
+                passwordForm.password_confirmation
+            );
+            setPasswordSuccess('Password changed successfully!');
+            setPasswordForm({ current_password: '', password: '', password_confirmation: '' });
+            setTimeout(() => {
+                setPasswordModal(false);
+                setPasswordSuccess('');
+            }, 1500);
+        } catch (err) {
+            setPasswordError(err.response?.data?.error || err.response?.data?.message || 'Failed to change password.');
+        }
+        setPasswordSubmitting(false);
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
     };
 
     return (
@@ -80,11 +133,39 @@ const Profile = () => {
                 <Card className="lg:col-span-3">
                     <h3 className="text-lg font-bold mb-6">Security</h3>
                     <div className="flex flex-wrap gap-3">
-                        <Button variant="secondary" icon="lock">Change Password</Button>
-                        <Button variant="secondary" icon="security">Two-Factor Authentication</Button>
-                        <Button variant="ghost" icon="history">View Login History</Button>
+                        <Button variant="secondary" icon="lock" onClick={() => { setPasswordError(''); setPasswordSuccess(''); setPasswordForm({ current_password: '', password: '', password_confirmation: '' }); setPasswordModal(true); }}>Change Password</Button>
+                        <Button variant="ghost" icon="history" onClick={() => setHistoryModal(true)}>View Login History</Button>
                     </div>
                 </Card>
+
+                {/* Change Password Modal */}
+                <Modal isOpen={passwordModal} onClose={() => { setPasswordModal(false); setPasswordError(''); setPasswordSuccess(''); }} title="Change Password" size="sm">
+                    <form className="space-y-4" onSubmit={handlePasswordChange}>
+                        {passwordError && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg text-red-600 text-sm">{passwordError}</div>}
+                        {passwordSuccess && <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 rounded-lg text-emerald-600 text-sm">{passwordSuccess}</div>}
+                        <Input label="Current Password" type="password" icon="lock" value={passwordForm.current_password} onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })} required />
+                        <Input label="New Password" type="password" icon="lock" value={passwordForm.password} onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })} required />
+                        <Input label="Confirm New Password" type="password" icon="lock" value={passwordForm.password_confirmation} onChange={(e) => setPasswordForm({ ...passwordForm, password_confirmation: e.target.value })} required />
+                        <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                            <Button type="button" variant="ghost" onClick={() => { setPasswordModal(false); setPasswordError(''); setPasswordSuccess(''); }}>Cancel</Button>
+                            <Button type="submit" loading={passwordSubmitting}>Change Password</Button>
+                        </div>
+                    </form>
+                </Modal>
+
+                {/* Login History Modal */}
+                <Modal isOpen={historyModal} onClose={() => setHistoryModal(false)} title="Login History" size="sm">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><span className="material-symbols-outlined">login</span></div>
+                            <div>
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">Last Login</p>
+                                <p className="text-sm text-slate-500">{formatDate(profileData?.last_login_at)}</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-400">Login history tracking shows your most recent session activity.</p>
+                    </div>
+                </Modal>
             </div>
         </div>
     );

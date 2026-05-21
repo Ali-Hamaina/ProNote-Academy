@@ -15,13 +15,12 @@ import {
 } from './pages/admin';
 
 // Formateur Pages
-import {
-  Dashboard as FormateurDashboard,
-  Grades as FormateurGrades,
-  Attendance as FormateurAttendance,
-  Schedule as FormateurSchedule,
-  Students as FormateurStudents
-} from './pages/formateur';
+import FormateurDashboard from './pages/formateur/Dashboard';
+import FormateurGrades from './pages/formateur/Grades';
+import FormateurAttendance from './pages/formateur/Attendance';
+import FormateurSchedule from './pages/formateur/Schedule';
+import FormateurStudents from './pages/formateur/Students';
+import FormateurModules from './pages/formateur/Modules';
 
 // Stagiaire Pages
 import {
@@ -104,12 +103,11 @@ function App() {
       <Route path="/formateur" element={<FormateurLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<FormateurDashboard />} />
-        <Route path="modules" element={<FormateurDashboard />} />
+        <Route path="modules" element={<FormateurModules />} />
         <Route path="schedule" element={<FormateurSchedule />} />
         <Route path="students" element={<FormateurStudents />} />
         <Route path="grades" element={<FormateurGrades />} />
         <Route path="attendance" element={<FormateurAttendance />} />
-        <Route path="reports" element={<FormateurDashboard />} />
         <Route path="settings" element={<Profile />} />
       </Route>
 

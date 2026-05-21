@@ -73,16 +73,17 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'avatar_url' => $user->avatar_url,
-                'status' => $user->status,
-                'phone' => $user->phone,
-                'bio' => $user->bio,
-            ]
+                'data' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'avatar_url' => $user->avatar_url,
+                    'status' => $user->status,
+                    'phone' => $user->phone,
+                    'bio' => $user->bio,
+                    'last_login_at' => $user->last_login_at,
+                ]
         ], 200);
     }
 

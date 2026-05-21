@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Badge, PageHeader } from '../../components/common';
+import { useNavigate } from 'react-router-dom';
+import { Card, Button, PageHeader } from '../../components/common';
 import { Breadcrumbs } from '../../components/layout';
 import { Layers, Clock, User, Info, CalendarCheck, Plus, Loader2 } from 'lucide-react';
 import dashboardService from '../../services/dashboardService';
@@ -7,6 +8,7 @@ import sessionService from '../../services/sessionService';
 import taskService from '../../services/taskService';
 
 const FormateurDashboard = () => {
+    const navigate = useNavigate();
     const [dashboard, setDashboard] = useState(null);
     const [schedule, setSchedule] = useState([]);
     const [tasks, setTasks] = useState([]);
@@ -39,8 +41,8 @@ const FormateurDashboard = () => {
         <div className="space-y-8">
             <Breadcrumbs items={[{ label: 'Dashboard' }]} />
             <PageHeader title={`Hello, Formateur ${d.name || ''}`} subtitle="Here's a summary of your pedagogical activity for today.">
-                <Button variant="secondary" icon={Plus}>Upload Course Material</Button>
-                <Button icon={Plus}>New Assessment</Button>
+                <Button variant="secondary" icon={Plus} onClick={() => navigate('/formateur/schedule')}>Manage Schedule</Button>
+                <Button icon={Plus} onClick={() => navigate('/formateur/grades')}>New Assessment</Button>
             </PageHeader>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -81,7 +83,7 @@ const FormateurDashboard = () => {
                                     { label: 'Passing', count: `${d.passing || 0} Students`, color: 'bg-primary' },
                                     { label: 'At Risk', count: `${d.at_risk || 0} Students`, color: 'bg-amber-500' },
                                     { label: 'Failing', count: `${d.failing || 0} Students`, color: 'bg-red-500' },
-                                    { label: 'Inactive', count: `${d.inactive || 0} Students`, color: 'bg-slate-400' },
+                                    { label: 'Classes Taught', count: `${d.classes_taught || 0} Classes`, color: 'bg-slate-400' },
                                 ].map((item) => (
                                     <div key={item.label} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col gap-1 hover:border-slate-200 dark:hover:border-slate-700 transition-colors">
                                         <div className="flex items-center gap-2"><span className={`size-2 rounded-full ${item.color}`} /><span className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.label}</span></div>
@@ -94,13 +96,13 @@ const FormateurDashboard = () => {
                 </div>
 
                 <Card padding="none" className="flex flex-col">
-                    <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center"><h3 className="text-lg font-bold">Daily Schedule</h3><button className="text-primary text-sm font-semibold hover:underline">View Week</button></div>
+                    <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center"><h3 className="text-lg font-bold">Daily Schedule</h3><button onClick={() => navigate('/formateur/schedule')} className="text-primary text-sm font-semibold hover:underline">View All</button></div>
                     <div className="p-4 flex flex-col gap-3 overflow-y-auto flex-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-1">Today</p>
                         {schedule.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No sessions today</p>}
                         {schedule.map((item, index) => (
                             <div key={item.id || index} className={`flex gap-4 p-3 rounded-xl transition-all ${item.active ? 'bg-primary/5 dark:bg-primary/10 border-l-4 border-primary' : 'border border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-                                <div className={`text-xs font-bold w-16 pt-0.5 shrink-0 ${item.active ? 'text-primary' : 'text-slate-400'}`}>{item.start_time || item.time}</div>
+                                <div className={`text-xs font-bold w-16 pt-0.5 shrink-0 ${item.active ? 'text-primary' : 'text-slate-400'}`}>{item.start_time ? new Date(item.start_time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : item.time}</div>
                                 <div className="flex flex-col gap-1 min-w-0">
                                     <p className="text-sm font-semibold truncate">{item.title || item.module?.name || 'Session'}</p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{item.location || item.room || ''}</p>
@@ -121,9 +123,14 @@ const FormateurDashboard = () => {
                     <h3 className="text-lg font-bold mb-6">Current Week Overview</h3>
                     <div className="grid grid-cols-5 gap-3 h-36">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, i) => (
-                            <div key={day} className="flex flex-col gap-2">
-                                <div className="bg-primary/10 rounded-lg flex-1 border border-primary/20" style={{ height: `${[50, 60, 70, 40, 30][i]}%` }} />
-                                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg" style={{ height: `${[30, 20, 0, 40, 30][i]}%` }} />
+                            <div key={day} className="flex flex-col gap-2 justify-end">
+                                {schedule.filter(s => {
+                                    if (!s.start_time) return false;
+                                    const d = new Date(s.start_time);
+                                    return d.getDay() === (i + 1) % 7;
+                                }).length > 0 && (
+                                    <div className="bg-primary/10 rounded-lg border border-primary/20" style={{ height: `${[50, 60, 70, 40, 30][i]}%` }} />
+                                )}
                                 <p className="text-center text-[10px] font-bold text-slate-400 mt-1 uppercase">{day}</p>
                             </div>
                         ))}
@@ -136,11 +143,10 @@ const FormateurDashboard = () => {
                         {tasks.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No tasks</p>}
                         {tasks.map((task, index) => (
                             <label key={task.id || index} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-all">
-                                <input type="checkbox" defaultChecked={task.done || task.completed} className="rounded-md text-primary focus:ring-primary/30 size-4 border-slate-300" />
+                                <input type="checkbox" defaultChecked={task.done || task.completed || task.status === 'completed'} className="rounded-md text-primary focus:ring-primary/30 size-4 border-slate-300" onChange={async (e) => { try { await taskService.update(task.id, { status: e.target.checked ? 'completed' : 'pending' }); } catch {} }} />
                                 <span className="text-sm font-medium">{task.title || task.label}</span>
                             </label>
                         ))}
-                        <button className="mt-3 text-primary text-xs font-bold flex items-center gap-1.5 hover:underline"><Plus className="w-4 h-4" strokeWidth={2} /> ADD TASK</button>
                     </div>
                 </Card>
             </div>

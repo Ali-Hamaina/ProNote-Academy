@@ -14,6 +14,12 @@ class AttendanceController extends Controller
     {
         $query = Attendance::with('user', 'classModel', 'marker');
 
+        // Formateurs can only see attendance for their own classes
+        if (auth()->user()->role === 'formateur') {
+            $formateurClassIds = \App\Models\ClassModel::where('instructor_id', auth()->id())->pluck('id');
+            $query->whereIn('class_id', $formateurClassIds);
+        }
+
         if ($request->has('class_id')) {
             $query->where('class_id', $request->class_id);
         }
@@ -133,6 +139,14 @@ class AttendanceController extends Controller
      */
     public function classRate($classId)
     {
+        // Formateurs can only view rates for their own classes
+        if (auth()->user()->role === 'formateur') {
+            $class = \App\Models\ClassModel::find($classId);
+            if (!$class || $class->instructor_id !== auth()->id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+        }
+
         $totalRecords = Attendance::where('class_id', $classId)->count();
         $presentCount = Attendance::where('class_id', $classId)
             ->where('status', 'present')

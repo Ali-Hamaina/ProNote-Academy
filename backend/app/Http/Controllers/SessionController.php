@@ -14,6 +14,11 @@ class SessionController extends Controller
     {
         $query = Session::with('classModel', 'module', 'instructor');
 
+        // Filter by formateur's own sessions
+        if (auth()->user()->role === 'formateur') {
+            $query->where('instructor_id', auth()->id());
+        }
+
         if ($request->has('class_id')) {
             $query->where('class_id', $request->class_id);
         }

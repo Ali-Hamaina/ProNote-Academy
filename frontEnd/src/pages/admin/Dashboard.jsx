@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { Card, Badge } from '../../components/common';
 import { Breadcrumbs } from '../../components/layout';
-import { User, School, Calendar, TrendingUp, UserPlus, FileText, BookOpen, AlertTriangle, Filter, Download, MoreVertical, Loader2 } from 'lucide-react';
+import { User, School, Calendar, TrendingUp, BookOpen, Users, FileText, Filter, Download, MoreVertical, Loader2 } from 'lucide-react';
 import dashboardService from '../../services/dashboardService';
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState([]);
-    const [activities, setActivities] = useState([]);
+    const [extraStats, setExtraStats] = useState([]);
     const [classes, setClasses] = useState([]);
     const [trends, setTrends] = useState({ total: 0, change: '', months: [] });
     const [loading, setLoading] = useState(true);
@@ -17,23 +16,16 @@ const AdminDashboard = () => {
         purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
         amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
         emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-    };
-
-    const activityIcons = { user: UserPlus, grade: FileText, module: BookOpen, system: AlertTriangle };
-    const activityColors = {
-        user: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-        grade: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-        module: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
-        system: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+        rose: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400',
+        cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-400',
     };
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [statsRes, trendsRes, activitiesRes, classesRes] = await Promise.all([
+                const [statsRes, trendsRes, classesRes] = await Promise.all([
                     dashboardService.getAdminStatistics(),
                     dashboardService.getEnrollmentTrends(),
-                    dashboardService.getRecentActivities(),
                     dashboardService.getAdminClasses(),
                 ]);
                 const d = statsRes.data || statsRes;
@@ -43,8 +35,13 @@ const AdminDashboard = () => {
                     { icon: Calendar, label: 'Active Classes', value: d.active_classes?.toLocaleString() || '0', change: d.classes_change || '+0%', positive: !String(d.classes_change || '').startsWith('-'), color: 'amber' },
                     { icon: TrendingUp, label: 'Avg. Performance', value: `${d.avg_performance || 0}%`, change: d.performance_change || '+0%', positive: !String(d.performance_change || '').startsWith('-'), color: 'emerald' },
                 ]);
+                setExtraStats([
+                    { icon: BookOpen, label: 'Total Modules', value: d.total_modules?.toLocaleString() || '0', color: 'rose' },
+                    { icon: Users, label: 'Total Enrollments', value: d.total_enrollments?.toLocaleString() || '0', color: 'cyan' },
+                    { icon: FileText, label: 'Total Resources', value: d.total_resources?.toLocaleString() || '0', color: 'purple' },
+                    { icon: User, label: 'Total Users', value: d.total_users?.toLocaleString() || '0', color: 'blue' },
+                ]);
                 setTrends(trendsRes.data || trendsRes);
-                setActivities(Array.isArray(activitiesRes.data || activitiesRes) ? (activitiesRes.data || activitiesRes) : []);
                 setClasses(Array.isArray(classesRes.data || classesRes) ? (classesRes.data || classesRes) : []);
             } catch { /* silent */ }
             setLoading(false);
@@ -76,32 +73,32 @@ const AdminDashboard = () => {
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card padding="md" className="lg:col-span-2">
                     <div className="flex items-center justify-between mb-6">
-                        <div><h2 className="text-lg font-bold">Enrollment Trends</h2><p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Monthly student intake</p></div>
+                        <div><h2 className="text-lg font-bold">Enrollment Trends</h2><p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Monthly student intake (last 7 months)</p></div>
                     </div>
                     <div className="flex items-baseline gap-3 mb-8">
                         <p className="text-3xl font-bold tracking-tight">{trends.total?.toLocaleString?.() || '0'}</p>
                         {trends.change && <p className="text-emerald-600 text-sm font-semibold flex items-center gap-1"><TrendingUp className="w-4 h-4" strokeWidth={2} /> {trends.change}</p>}
                     </div>
                     <div className="grid grid-cols-7 gap-3 items-end h-[180px] relative">
-                        {(trends.months || ['Jan','Feb','Mar','Apr','May','Jun','Jul']).map((m, i) => {
-                            const label = typeof m === 'object' ? m.label : m;
-                            const height = typeof m === 'object' ? m.height : [55,40,75,95,65,50,80][i];
-                            return (<div key={i} className="flex flex-col items-center gap-3"><div className={`w-full rounded-lg transition-all duration-300 ${i===3?'bg-primary shadow-lg shadow-primary/20':'bg-slate-100 dark:bg-slate-800 hover:bg-primary/30'}`} style={{height:`${height}%`}} /><span className="text-xs font-semibold text-slate-500">{label}</span></div>);
-                        })}
+                        {(trends.months?.length ? trends.months : []).map((m, i) => (
+                            <div key={i} className="flex flex-col items-center gap-3">
+                                <span className="text-[10px] font-bold text-slate-400">{m.count || 0}</span>
+                                <div className={`w-full rounded-lg transition-all duration-300 ${m.count && m.count === Math.max(...trends.months.map(x => x.count || 0)) ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-slate-800 hover:bg-primary/30'}`} style={{height:`${m.height || 5}%`}} />
+                                <span className="text-xs font-semibold text-slate-500">{m.label}</span>
+                            </div>
+                        ))}
                     </div>
                 </Card>
 
-                <Card padding="none" className="flex flex-col">
-                    <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between"><h2 className="text-lg font-bold">Recent Activities</h2><Link to="/admin/logs" className="text-primary text-sm font-semibold hover:underline">View All</Link></div>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                        {activities.length === 0 && <p className="text-sm text-slate-400 text-center py-8">No recent activities</p>}
-                        {activities.map((a, i) => { const Icon = activityIcons[a.type] || AlertTriangle; return (
-                            <div key={i} className="flex gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${activityColors[a.type] || activityColors.system}`}><Icon className="w-5 h-5" strokeWidth={2} /></div>
-                                <div className="min-w-0"><p className="text-sm font-semibold truncate">{a.title}</p><p className="text-xs text-slate-500 dark:text-slate-400 truncate">{a.description || a.desc}</p><p className="text-[10px] text-slate-400 mt-1.5 uppercase tracking-wider font-bold">{a.time || a.created_at}</p></div>
-                            </div>); })}
-                    </div>
-                </Card>
+                <div className="grid grid-cols-2 gap-4">
+                    {extraStats.map((stat, index) => (
+                        <Card key={index} padding="md" className="flex flex-col items-center justify-center text-center">
+                            <div className={`p-2.5 rounded-xl mb-3 ${iconColorClasses[stat.color]}`}><stat.icon className="w-5 h-5" strokeWidth={2} /></div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white leading-none mb-1">{stat.value}</p>
+                            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+                        </Card>
+                    ))}
+                </div>
             </section>
 
             <Card padding="none" className="overflow-hidden">

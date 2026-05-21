@@ -7,6 +7,7 @@ use App\Models\ClassModel;
 use App\Models\Enrollment;
 use App\Models\Grade;
 use App\Models\Module;
+use App\Models\Resource;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -21,6 +22,10 @@ class DashboardController extends Controller
             $totalFormateurs = User::where('role', 'formateur')->count();
             $activeClasses = ClassModel::where('status', 'active')->count();
             $avgPerformance = Grade::avg('grade_value') ?? 0;
+            $totalModules = Module::count();
+            $totalEnrollments = Enrollment::count();
+            $totalResources = Resource::count();
+            $totalUsers = User::count();
 
             return response()->json([
                 'students' => $totalStudents,
@@ -31,6 +36,10 @@ class DashboardController extends Controller
                 'classes_change' => '+0%',
                 'avg_performance' => round($avgPerformance, 2),
                 'performance_change' => '+3%',
+                'total_modules' => $totalModules,
+                'total_enrollments' => $totalEnrollments,
+                'total_resources' => $totalResources,
+                'total_users' => $totalUsers,
             ]);
         } catch (\Exception $e) {
             \Log::error('Error in adminStatistics: ' . $e->getMessage());
@@ -43,27 +52,36 @@ class DashboardController extends Controller
      */
     public function enrollmentTrends(Request $request)
     {
-        $period = $request->get('period', '6months');
+        $months = (int) $request->get('months', 7);
 
-        // MySQL-compatible monthly enrollment data
+        // Get enrollments grouped by month for the last N months
         $trends = Enrollment::selectRaw('DATE_FORMAT(created_at, "%Y-%m-01") as month, COUNT(*) as count')
+            ->where('created_at', '>=', now()->subMonths($months))
             ->groupBy('month')
             ->orderBy('month', 'asc')
-            ->limit(6)
             ->get();
 
-        $formattedTrends = [
+        $maxCount = $trends->max('count') ?: 1;
+        $allMonths = [];
+
+        // Build an array for each month in the window (fill missing with 0)
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $monthKey = $date->format('Y-m-01');
+            $found = $trends->firstWhere('month', $monthKey);
+            $count = $found ? (int) $found->count : 0;
+            $allMonths[] = [
+                'label' => $date->format('M'),
+                'height' => max(5, round(($count / $maxCount) * 100)),
+                'count' => $count,
+            ];
+        }
+
+        return response()->json([
             'total' => $trends->sum('count'),
             'change' => '+12%',
-            'months' => $trends->map(function($trend) {
-                return [
-                    'label' => \Carbon\Carbon::parse($trend->month)->format('M'),
-                    'height' => min(100, rand(40, 95))
-                ];
-            })->toArray()
-        ];
-
-        return response()->json($formattedTrends);
+            'months' => $allMonths,
+        ]);
     }
 
     /**

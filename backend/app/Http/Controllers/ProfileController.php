@@ -13,8 +13,21 @@ class ProfileController extends Controller
      */
     public function show()
     {
+        $user = auth()->user();
+
         return response()->json([
-            'data' => auth()->user()
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'avatar_url' => $user->avatar_url,
+                'status' => $user->status,
+                'phone' => $user->phone,
+                'bio' => $user->bio,
+                'last_login_at' => $user->last_login_at,
+                'created_at' => $user->created_at,
+            ]
         ]);
     }
 

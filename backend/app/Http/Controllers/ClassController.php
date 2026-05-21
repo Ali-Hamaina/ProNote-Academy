@@ -126,7 +126,7 @@ class ClassController extends Controller
     {
         $formateurId = auth()->id();
         $classes = ClassModel::where('instructor_id', $formateurId)
-            ->with('modules', 'enrollments')
+            ->with(['modules', 'enrollments.user'])
             ->paginate($request->get('per_page', 15));
 
         return response()->json([

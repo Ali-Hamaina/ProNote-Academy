@@ -9,10 +9,8 @@ import {
     Calendar,
     UserCircle,
     GraduationCap,
-    FileText,
     Settings,
     LogOut,
-    Plus,
     FolderOpen,
     Layers
 } from 'lucide-react';
@@ -40,7 +38,6 @@ const Sidebar = ({ isOpen, onClose, role = 'admin' }) => {
             { icon: Users, label: 'Students', to: '/formateur/students' },
             { icon: GraduationCap, label: 'Gradebook', to: '/formateur/grades' },
             { icon: UserCircle, label: 'Attendance', to: '/formateur/attendance' },
-            { icon: FileText, label: 'Reports', to: '/formateur/reports' },
         ],
         stagiaire: [
             { icon: LayoutDashboard, label: 'My Dashboard', to: '/stagiaire/dashboard' },
@@ -110,13 +107,6 @@ const Sidebar = ({ isOpen, onClose, role = 'admin' }) => {
                     </nav>
 
                     <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
-                        {role === 'admin' && (
-                            <button className="w-full bg-primary text-white text-sm font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 active:scale-[0.98]">
-                                <Plus className="w-5 h-5" strokeWidth={2} />
-                                <span>New Instance</span>
-                            </button>
-                        )}
-
                         <NavLink
                             to={`/${role}/settings`}
                             className={({ isActive }) => `
